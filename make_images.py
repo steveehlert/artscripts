@@ -41,8 +41,24 @@ parser.add_argument(
     help='Name of the event file.')
 
 parser.add_argument(
-    '-out', type=str, required=False, default='expmap.fits',
-    help='Name of the output file.')
+    '-att', type=str, required=False,
+    help='Name of the attitude file (with quaternions).')
+
+parser.add_argument(
+    '-exp', type=str, required=False, 
+    help='Name of the exp file.')
+
+parser.add_argument(
+    '-makeexp', type=str2bool, required=False, default=True,
+    help='Set to False to skip expmap making'
+    )
+parser.add_argument(
+    '-img', type=str, required=False, 
+    help='Name of the image file.')
+
+parser.add_argument(
+    '-survey', type=str2bool, default=True,
+    help="""Set to True by default for processing survey data.""")
 
 # optional arguments
 parser.add_argument('-usexy', type=str2bool, required=False, default=True,
@@ -71,9 +87,6 @@ parser.add_argument(
     help="""list of ra dec values specifying the 4 corners of the box.
     Example: -box ra1 ra2 dec1 dec2""")
 
-parser.add_argument('-verbose', type=bool, required=False, default=True,
-    help='Add a time constraint to the attitude file. Only the periods within the specified time would be considered.')
-
 parser.add_argument('-overwrite', type=bool, required=False, default=True,
     help='Overwrite if set as True.')
 
@@ -83,8 +96,15 @@ parser.add_argument(
 parser.add_argument(
     '-tele', nargs='+', type=int, default=None,
     help="""list of telescopes to be used.""")
+parser.add_argument('-verbose', type=str2bool, required=False, default=True,
+    help='A verbosity parameter')
+
 
 args = parser.parse_args()
+verbose = args.verbose
+vprint = verboseprint(verbose)
+vprint('arguments parsed:\n')
+vprint(args)
 
 datapath = os.path.abspath(args.datapath)
 imgpath = os.path.abspath(args.imgpath)
@@ -92,11 +112,15 @@ exppath = os.path.abspath(args.exppath)
 tilelist = args.tilelist
 tele = args.tele
 evt = args.evt
-out = args.out
+att = args.att
+img = args.img
+exp = args.exp
+makeexp = args.makeexp
 overwrite=args.overwrite
-
-
+att = args.att
+survey = args.survey
 # get the file list for making images
+vprint('getting all the file names')
 filer  = martFileHandler(surveypath=datapath,level=2,tile=tilelist, tele=tele, file=evt)
 filer.GetTiles()
 filer.GetTeles()
@@ -109,8 +133,9 @@ if evt is None:
             os.system('mkdir '+ exppath + '/' + t)
 
 for i, file in enumerate(filer.allfiles):
-    imager = martImager(file,datapath=datapath)
-    flaretool = bgtools.martFlareTool(file,time_step = 0.1)
+    imager = martImager(file,datapath=datapath, survey=survey)
+    vprint('Flare filtering...')
+    flaretool = bgtools.martFlareTool(file,time_step = 0.1, survey=survey)
     clean_data = flaretool.FilterData_FlareTimes(flaretool.evt_data_original) 
     if len(clean_data) == 0:
         clean_data = flaretool.evt_data_original
@@ -120,16 +145,35 @@ for i, file in enumerate(filer.allfiles):
     idata_corner = imager.FilterData_Flag(photon_data, 2)
     ihdu_fov = imager.Make_Image_SkyXY(idata_fov)
     ihdu_corner = imager.Make_Image_SkyXY(idata_fov)
-
-
-    imgname = imgpath + '/' + filer.alltiles[i] + '/img_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
+    if evt is None:
+        imgname = imgpath + '/' + filer.alltiles[i] + '/img_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
+        imgname2 = imgpath + '/' + filer.alltiles[i] + '/img_corner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
+        expname = exppath + '/' + filer.alltiles[i] + '/expfov_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits'
+        expname2 = exppath + '/' + filer.alltiles[i] + '/expcorner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits'
+    if evt is not None and img is None:
+        imgname = imgpath + '/img.fits'
+        imgname2 = imgpath + '/img_corner.fits'
+        print('image name not set (by -img), saving them as ' + imgpath + '/img.fits and img_corner.fits')
+    elif evt is not None and img is not None:
+        imgname = img
+        imgname2 = imgname[:-5] + '.corner.fits'
+    if evt is not None and exp is None:
+        expname = exppath + '/exp.fits'
+        expname2 = exppath + '/exp_corner.fits'
+        print('exp name not set (by -img), saving them as ' + exppath + '/exp.fits and exp_corner.fits')
+    elif evt is not None and exp is not None:
+        expname = exp
+        expname2 = expname[:-5] + '.corner.fits'
+    vprint('saving image as ' + imgname)
     ihdu_fov.writeto(imgname,overwrite=overwrite)
-    imgname = imgpath + '/' + filer.alltiles[i] + '/img_corner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
-    ihdu_corner.writeto(imgname,overwrite=overwrite)
-    exphdu = imager.Make_Expmap(vig=True, flag=0, imagehdu=ihdu_fov)
-    expname = exppath + '/' + filer.alltiles[i] + '/expfov_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits'
-    exphdu.writeto(expname,overwrite=overwrite)
-    exphdu = imager.Make_Expmap(vig=False, flag=2, imagehdu=ihdu_corner)
-    expname = exppath + '/' + filer.alltiles[i] + '/expfov_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits'
-    exphdu.writeto(expname,overwrite=overwrite)
+    ihdu_corner.writeto(imgname2,overwrite=overwrite)
+    vprint('saving image as ' + imgname)
+    vprint('saving corner image as ' + imgname2)
+    vprint('saving image as ' + expname)
+    if makeexp:
+        exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
+        exphdu.writeto(expname,overwrite=overwrite)
+        vprint('saving corner expmap as ' + expname2)
+        exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
+        exphdu.writeto(expname2,overwrite=overwrite)
 

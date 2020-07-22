@@ -56,10 +56,6 @@ parser.add_argument(
     '-img', type=str, required=False, 
     help='Name of the image file.')
 
-parser.add_argument(
-    '-survey', type=str2bool, default=True,
-    help="""Set to True by default for processing survey data.""")
-
 # optional arguments
 parser.add_argument('-usexy', type=str2bool, required=False, default=True,
     help='Make an image using the X/Y column from the event list')
@@ -118,7 +114,6 @@ exp = args.exp
 makeexp = args.makeexp
 overwrite=args.overwrite
 att = args.att
-survey = args.survey
 # get the file list for making images
 vprint('getting all the file names')
 filer  = martFileHandler(surveypath=datapath,level=2,tile=tilelist, tele=tele, file=evt)
@@ -133,9 +128,9 @@ if evt is None:
             os.system('mkdir '+ exppath + '/' + t)
 
 for i, file in enumerate(filer.allfiles):
-    imager = martImager(file,datapath=datapath, survey=survey)
+    imager = martImager(file,datapath=datapath)
     vprint('Flare filtering...')
-    flaretool = bgtools.martFlareTool(file,time_step = 0.1, survey=survey)
+    flaretool = bgtools.martFlareTool(file,time_step = 0.1)
     clean_data = flaretool.FilterData_FlareTimes(flaretool.evt_data_original) 
     if len(clean_data) == 0:
         clean_data = flaretool.evt_data_original
@@ -144,7 +139,7 @@ for i, file in enumerate(filer.allfiles):
     idata_fov = imager.FilterData_Flag(photon_data, 0)
     idata_corner = imager.FilterData_Flag(photon_data, 2)
     ihdu_fov = imager.Make_Image_SkyXY(idata_fov)
-    ihdu_corner = imager.Make_Image_SkyXY(idata_fov)
+    ihdu_corner = imager.Make_Image_SkyXY(idata_corner)
     if evt is None:
         imgname = imgpath + '/' + filer.alltiles[i] + '/img_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
         imgname2 = imgpath + '/' + filer.alltiles[i] + '/img_corner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
@@ -169,8 +164,8 @@ for i, file in enumerate(filer.allfiles):
     ihdu_corner.writeto(imgname2,overwrite=overwrite)
     vprint('saving image as ' + imgname)
     vprint('saving corner image as ' + imgname2)
-    vprint('saving image as ' + expname)
     if makeexp:
+        vprint('saving exp as ' + expname)
         exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
         exphdu.writeto(expname,overwrite=overwrite)
         vprint('saving corner expmap as ' + expname2)

@@ -130,6 +130,7 @@ if evt is None:
             os.system('mkdir '+ exppath + '/' + t)
 
 for i, file in enumerate(filer.allfiles):
+    imager = martImager(file,datapath=datapath)
     if evt is None:
         imgname = imgpath + '/' + filer.alltiles[i] + '/img_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
         imgname2 = imgpath + '/' + filer.alltiles[i] + '/img_corner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
@@ -149,7 +150,6 @@ for i, file in enumerate(filer.allfiles):
     elif evt is not None and exp is not None:
         expname = exp
         expname2 = expname[:-5] + '.corner.fits'
-    imager = martImager(file,datapath=datapath)
     vprint('Flare filtering...')
     flaretool = bgtools.martFlareTool(file,time_step = 0.1)
     clean_data = flaretool.FilterData_FlareTimes(flaretool.evt_data_original) 

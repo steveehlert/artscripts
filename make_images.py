@@ -115,6 +115,8 @@ makeexp = args.makeexp
 overwrite=args.overwrite
 att = args.att
 # get the file list for making images
+vprint('overwrite = ', overwrite)
+
 vprint('getting all the file names')
 filer  = martFileHandler(surveypath=datapath,level=2,tile=tilelist, tele=tele, file=evt)
 filer.GetTiles()
@@ -128,18 +130,6 @@ if evt is None:
             os.system('mkdir '+ exppath + '/' + t)
 
 for i, file in enumerate(filer.allfiles):
-    imager = martImager(file,datapath=datapath)
-    vprint('Flare filtering...')
-    flaretool = bgtools.martFlareTool(file,time_step = 0.1)
-    clean_data = flaretool.FilterData_FlareTimes(flaretool.evt_data_original) 
-    if len(clean_data) == 0:
-        clean_data = flaretool.evt_data_original
-        print('Flare filtering results in an empty list, assuming no flares...')
-    photon_data = imager.FilterData_Energy(clean_data,4,30) 
-    idata_fov = imager.FilterData_Flag(photon_data, 0)
-    idata_corner = imager.FilterData_Flag(photon_data, 2)
-    ihdu_fov = imager.Make_Image_SkyXY(idata_fov)
-    ihdu_corner = imager.Make_Image_SkyXY(idata_corner)
     if evt is None:
         imgname = imgpath + '/' + filer.alltiles[i] + '/img_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
         imgname2 = imgpath + '/' + filer.alltiles[i] + '/img_corner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
@@ -159,16 +149,50 @@ for i, file in enumerate(filer.allfiles):
     elif evt is not None and exp is not None:
         expname = exp
         expname2 = expname[:-5] + '.corner.fits'
-    vprint('saving image as ' + imgname)
-    ihdu_fov.writeto(imgname,overwrite=overwrite)
-    ihdu_corner.writeto(imgname2,overwrite=overwrite)
-    vprint('saving image as ' + imgname)
-    vprint('saving corner image as ' + imgname2)
+    imager = martImager(file,datapath=datapath)
+    vprint('Flare filtering...')
+    flaretool = bgtools.martFlareTool(file,time_step = 0.1)
+    clean_data = flaretool.FilterData_FlareTimes(flaretool.evt_data_original) 
+    if len(clean_data) == 0:
+        clean_data = flaretool.evt_data_original
+        print('Flare filtering results in an empty list, assuming no flares...')
+    photon_data = imager.FilterData_Energy(clean_data,4,30) 
+    idata_fov = imager.FilterData_Flag(photon_data, 0)
+    idata_corner = imager.FilterData_Flag(photon_data, 2)
+    ihdu_fov = imager.Make_Image_SkyXY(idata_fov)
+    ihdu_corner = imager.Make_Image_SkyXY(idata_corner)
+    if (overwrite == False):
+        if os.path.exists(imgname):
+            vprint(imgname + ' already exists, skpping')
+        else:
+            ihdu_fov.writeto(imgname,overwrite=overwrite)
+        if os.path.exists(imgname2):
+            vprint(imgname2 + ' already exists, skpping')
+        else:
+            ihdu_corner.writeto(imgname2,overwrite=overwrite)
+    else:
+        vprint('saving image as ' + imgname)
+        ihdu_fov.writeto(imgname,overwrite=overwrite)
+        ihdu_corner.writeto(imgname2,overwrite=overwrite)
+        vprint('saving corner image as ' + imgname2)
     if makeexp:
-        vprint('saving exp as ' + expname)
-        exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
-        exphdu.writeto(expname,overwrite=overwrite)
-        vprint('saving corner expmap as ' + expname2)
-        exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
-        exphdu.writeto(expname2,overwrite=overwrite)
-
+        if overwrite == False:
+            if os.path.exists(expname):
+                print(expname + ' already exists, skpping')
+            else:
+                vprint('saving exp as ' + expname)
+                exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
+                exphdu.writeto(expname,overwrite=overwrite)
+            if os.path.exists(expname2):
+                print(expname2 + ' already exists, skpping')
+            else:
+                vprint('saving corner expmap as ' + expname2)
+                exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
+                exphdu.writeto(expname2,overwrite=overwrite)
+        else:
+            vprint('saving exp as ' + expname)
+            exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
+            exphdu.writeto(expname,overwrite=overwrite)
+            vprint('saving corner expmap as ' + expname2)
+            exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
+            exphdu.writeto(expname2,overwrite=overwrite)

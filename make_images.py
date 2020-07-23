@@ -83,7 +83,7 @@ parser.add_argument(
     help="""list of ra dec values specifying the 4 corners of the box.
     Example: -box ra1 ra2 dec1 dec2""")
 
-parser.add_argument('-overwrite', type=bool, required=False, default=True,
+parser.add_argument('-overwrite', type=str2bool, required=False, default=True,
     help='Overwrite if set as True.')
 
 parser.add_argument(

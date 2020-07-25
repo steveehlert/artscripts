@@ -7,6 +7,7 @@ import astropy.coordinates as cd
 import astropy.units as u
 from martxclib.martxcfun import *
 from martxclib.martxcfits import *
+from martxclib.martl1tools import *
 from martxclib.martimagetools import martImager, martExpmapper
 from martxclib import martxcbgdtools as bgtools
 
@@ -66,6 +67,7 @@ parser.add_argument('-raw', type=bool, required=False, default=False,
 parser.add_argument('-gyrocoords', type=bool, required=False, default=False,
     help='Using gyro RA/DEC as opposed to event list original RA/DEC if set as True.')
 
+'''
 parser.add_argument(
     '-rasize', type=float, required=False, default=15.,
     help='RA pixel size in arcsec.')
@@ -73,7 +75,7 @@ parser.add_argument(
 parser.add_argument(
     '-decsize', type=float, required=False, default=15.,
     help='DEC pixel size in arcsec.')
-
+'''
 parser.add_argument(
     '-projection', type=str, required=False, default='TAN',
     help='DEC pixel size in arcsec.')
@@ -118,7 +120,7 @@ att = args.att
 vprint('overwrite = ', overwrite)
 
 vprint('getting all the file names')
-filer  = martFileHandler(surveypath=datapath,level=2,tile=tilelist, tele=tele, file=evt)
+filer = martFileHandler(surveypath=datapath,level=2,tile=tilelist, tele=tele, file=evt)
 filer.GetTiles()
 filer.GetTeles()
 # check tile paths first
@@ -151,7 +153,7 @@ for i, file in enumerate(filer.allfiles):
         expname = exp
         expname2 = expname[:-5] + '.corner.fits'
     vprint('Flare filtering...')
-    flaretool = bgtools.martFlareTool(file,time_step = 0.1)
+    flaretool = bgtools.martFlareTool(file,time_step = 10.)
     clean_data = flaretool.FilterData_FlareTimes(flaretool.evt_data_original) 
     if len(clean_data) == 0:
         clean_data = flaretool.evt_data_original

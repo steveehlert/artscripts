@@ -5,17 +5,39 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 from astropy.io import fits
+import sys
+from scipy.optimize import minimize
+from scipy.special import factorial
+from scipy import stats
 # this can be changed for machines other than camelot
 #datapath = '/mnt/artxc/data/swartz'
 datapath = '/home/ctchen/art-xc'
 
 
-all_evtnames = glob.glob(datapath + '/level2/273024/artl2_T01*.fits')
+telstring="T0%s" %(sys.argv[1])
+
+all_evtnames = glob.glob(datapath + '/level2/273024/artl2_'+telstring+'*.fits')
 # can also try one of the large files : artl2_T04_20191211_183844.fits
 print(len(all_evtnames))
 print('Initilizing...')
 
 j=0
+
+
+
+
+def poisson(k, lamb):
+    """poisson pdf, parameter lamb is the fit parameter"""
+    return (lamb**k/factorial(k)) * np.exp(-lamb)
+
+
+
+def negative_log_likelihood(params, data, expmap):
+    ''' better alternative using scipy '''
+    #print(params[0]*expmap)
+    return -stats.poisson.logpmf(data, np.exp(params[0])*expmap).sum()
+
+
 
 sumphotons= None
 sum_exp = None
@@ -67,10 +89,20 @@ for evtname in all_evtnames:
     #print("Corner Exposure Map")
     #plt.imshow(exp_corner.data, norm=LogNorm(vmin=np.max(exp_corner.data)*1e-6))
     #plt.show()
+    
+    #plt.hist(ihdu_corner.data.flatten(), bins=10)
+    ##plt.semilogy()
+    #plt.show()
 
-    expcor_corner = ihdu_corner.data.astype('float') / exp_corner.data.astype('float')
+    #expcor_corner = ihdu_corner.data.astype('float') / exp_corner.data.astype('float')
 
-    expcor_corner[np.where(exp_corner.data < 1e-6) ] =0.
+
+    expmask = np.where(exp_corner.data > 0)
+    
+    #mean_ctrate = np.mean(
+    
+
+    #expcor_corner[np.where(exp_corner.data < 1e-6) ] =0.
     #plt.hist(expcor_corner.flatten(),bins=100)
     #plt.semilogy()
     #plt.show()
@@ -80,10 +112,23 @@ for evtname in all_evtnames:
     #plt.show()
     
     #This is the expected particle background in the 4-30 keV band in the FOV
-    ctrate_nxb = inout_ratio * np.median(expcor_corner[np.where(exp_corner.data >= 0)])
-
-    print(ctrate_nxb)
-
+    #plt.hist(expcor_corner[np.where(exp_corner.data >= 0)],bins=100)
+    #plt.semilogy()
+    #plt.show()
+    #print(np.min(ihdu_corner.data[expmask],exp_corner.data[expmask])
+    #result = minimize(negative_log_likelihood,  # function to minimize
+    #              x0=0,            # start value
+    #              args=(ihdu_corner.data[expmask],exp_corner.data[expmask]),             # additional arguments for function
+    #              method='Powell',          # minimization method, see docs
+    #              )
+    #print("MLE bg count rate: ", 10**(result['x'][0]))
+    #ctrate_nxb = inout_ratio * np.median(expcor_corner[np.where(exp_corner.data >= 0)])
+    #ctrate_nxb = 0.
+    
+    
+    
+    ctrate_nxb = np.mean(ihdu_corner.data[expmask]) #np.exp(result['x'])[0]
+    #print("Simple Average Count Rate: ", ctrate_nxb)
     nxb_fov = ctrate_nxb * exp_fov.data
     
     #plt.imshow(nxb_fov)
@@ -91,9 +136,24 @@ for evtname in all_evtnames:
     #plt.imshow(ihdu_fov.data)
     #plt.show()
 
-    fov_nxbsub = ihdu_fov.data - nxb_fov
+    fov_nxbprob = poisson(ihdu_fov.data, nxb_fov)
+    #plt.imshow(fov_nxbprob)
+    #plt.show()
+
+    fov_rand = stats.uniform.rvs(size=np.shape(fov_nxbprob))
     
-    fov_nxbsub[np.where(fov_nxbsub < 0) ] = 0.
+    
+    bgmask =  fov_nxbprob >= fov_rand
+    
+    
+
+    fov_nxbsub = np.copy(ihdu_fov.data)
+    
+    fov_nxbsub[np.where(bgmask)] =0.
+    
+    #plt.imshow(fov_nxbsub)
+    #plt.show()
+    
     
     if j==0: 
         sumphotons = fov_nxbsub
@@ -106,14 +166,14 @@ for evtname in all_evtnames:
     
     
 final_expcor = sumphotons / sum_exp
-plt.imshow(final_expcor)
-plt.show()
-plt.hist(final_expcor.flatten(),bins=100)
-plt.semilogy()
-plt.show()
+#plt.imshow(final_expcor)
+#plt.show()
+#plt.hist(final_expcor.flatten(),bins=100)
+#plt.semilogy()
+#plt.show()
 
 final_hdu = fits.ImageHDU(data = final_expcor, header = final_header)
-final_hdu.writeto("Summed_ExpCorr_273024.fits",overwrite=True)
+final_hdu.writeto("Summed_ExpCorr_273024_%s.fits" %(telstring),overwrite=True)
     #fov_bgsubexpcor = fov_nxbsub / exp_fov.data.astype('float')
 
     #fov_bgsubexpcor[np.where(exp_fov.data < 1e-6)] =0.

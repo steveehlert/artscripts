@@ -137,6 +137,7 @@ for i, file in enumerate(filer.allfiles):
         imgname = imgpath + '/' + filer.alltiles[i] + '/img_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
         imgname2 = imgpath + '/' + filer.alltiles[i] + '/img_corner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits' 
         expname = exppath + '/' + filer.alltiles[i] + '/expfov_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits'
+        expnamenv = exppath + '/' + filer.alltiles[i] + '/expfov_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.nv.fits'
         expname2 = exppath + '/' + filer.alltiles[i] + '/expcorner_' + imager.evtlister.lv1date + '_' + imager.evtlister.lv1time + '.' + filer.alltiles[i] + '.' + filer.allteles[i] + '.fits'
     if evt is not None and img is None:
         imgname = imgpath + '/img.fits'
@@ -147,10 +148,12 @@ for i, file in enumerate(filer.allfiles):
         imgname2 = imgname[:-5] + '.corner.fits'
     if evt is not None and exp is None:
         expname = exppath + '/exp.fits'
+        expnamenv = exppath + '/exp.nv.fits'
         expname2 = exppath + '/exp_corner.fits'
         print('exp name not set (by -img), saving them as ' + exppath + '/exp.fits and exp_corner.fits')
     elif evt is not None and exp is not None:
         expname = exp
+        expnamenv = expname[:-5] + '.nv.fits' 
         expname2 = expname[:-5] + '.corner.fits'
     vprint('Flare filtering...')
     flaretool = bgtools.martFlareTool(file,time_step = 10.)
@@ -195,6 +198,9 @@ for i, file in enumerate(filer.allfiles):
             vprint('saving exp as ' + expname)
             exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
             exphdu.writeto(expname,overwrite=overwrite)
+            vprint('saving fov exp/NV as ' + expnamenv)
+            exphdu = imager.Make_Expmap(attname=att, vig=False, flag=0, imagehdu=ihdu_fov)
+            exphdu.writeto(expnamenv,overwrite=overwrite)
             vprint('saving corner expmap as ' + expname2)
             exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
             exphdu.writeto(expname2,overwrite=overwrite)

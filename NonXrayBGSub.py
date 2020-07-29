@@ -96,6 +96,21 @@ for evtname in all_evtnames:
 
     #expcor_corner = ihdu_corner.data.astype('float') / exp_corner.data.astype('float')
 
+    expected_bg = sumexp_fov * mean_bg_ctrate
+
+prob_bg = gammaincc(np.ones_like(sumphotons_fov), expected_bg)
+
+
+prob_sky = 1. - prob_bg
+
+non_zero_mask = sumphotons_fov > 0
+zero_mask = sumphotons_fov ==0
+
+clean_image = np.copy(sumphotons_fov)
+
+clean_image[zero_mask] = 0
+clean_image[non_zero_mask] = stats.binom.rvs(sumphotons_fov[non_zero_mask].astype('int'),prob_sky[non_zero_mask])
+
 
     expmask = np.where(exp_corner.data > 0)
     

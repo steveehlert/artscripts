@@ -188,6 +188,12 @@ for i, file in enumerate(filer.allfiles):
                 vprint('saving exp as ' + expname)
                 exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
                 exphdu.writeto(expname,overwrite=overwrite)
+            if os.path.exists(expnamenv):
+                print(expnamenv + ' already exists, skpping')
+            else:
+                vprint('saving exp as ' + expnamenv)
+                exphdu = imager.Make_Expmap(attname=att, vig=False, flag=0, imagehdu=ihdu_fov)
+                exphdu.writeto(expnamenv,overwrite=overwrite)
             if os.path.exists(expname2):
                 print(expname2 + ' already exists, skpping')
             else:

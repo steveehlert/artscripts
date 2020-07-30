@@ -182,31 +182,47 @@ for i, file in enumerate(filer.allfiles):
         vprint('saving corner image as ' + imgname2)
     if makeexp:
         if overwrite == False:
+            vigarr = []
+            flagarr = []
+            fnamearr = []
+
             if os.path.exists(expname):
                 print(expname + ' already exists, skpping')
             else:
-                vprint('saving exp as ' + expname)
-                exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
-                exphdu.writeto(expname,overwrite=overwrite)
+                vigarr.append(True)
+                flagarr.append(0)
+                fnamearr.append(expname)
             if os.path.exists(expnamenv):
                 print(expnamenv + ' already exists, skpping')
             else:
-                vprint('saving exp as ' + expnamenv)
+                vigarr.append(False)
+                flagarr.append(0)
+                fnamearr.append(expnamenv)
                 exphdu = imager.Make_Expmap(attname=att, vig=False, flag=0, imagehdu=ihdu_fov)
                 exphdu.writeto(expnamenv,overwrite=overwrite)
             if os.path.exists(expname2):
                 print(expname2 + ' already exists, skpping')
             else:
-                vprint('saving corner expmap as ' + expname2)
-                exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
-                exphdu.writeto(expname2,overwrite=overwrite)
+                vigarr.append(False)
+                flagarr.append(2)
+                fnamearr.append(expname2)
+
+            exphdu = imager.Make_Expmap(attname=att, vig=vigarr, flag=flagarr, imagehdu=ihdu_fov)
+            if len(vigarr) == 0:
+                print('no expmaps are made here... files already exist.')
+            elif len(vigarr) == 1:
+                exphdu.writeto(fnamearr[0],overwrite=overwrite)
+            else:
+                for iexp, ename in enumerate(fnamearr):
+                    print('saving expmap to ' + ename)
+                    exphdu[iexp].writeto(fnamearr[0],overwrite=overwrite)
+
         else:
+            exphdu = imager.Make_Expmap(attname=att, vig=[True, False, False], 
+                flag=[0, 0, 2], imagehdu=ihdu_fov)
             vprint('saving exp as ' + expname)
-            exphdu = imager.Make_Expmap(attname=att, vig=True, flag=0, imagehdu=ihdu_fov)
-            exphdu.writeto(expname,overwrite=overwrite)
+            exphdu[0].writeto(expname,overwrite=overwrite)
             vprint('saving fov exp/NV as ' + expnamenv)
-            exphdu = imager.Make_Expmap(attname=att, vig=False, flag=0, imagehdu=ihdu_fov)
-            exphdu.writeto(expnamenv,overwrite=overwrite)
+            exphdu[1].writeto(expnamenv,overwrite=overwrite)
             vprint('saving corner expmap as ' + expname2)
-            exphdu = imager.Make_Expmap(attname=att, vig=False, flag=2, imagehdu=ihdu_corner)
-            exphdu.writeto(expname2,overwrite=overwrite)
+            exphdu[2].writeto(expname2,overwrite=overwrite)
